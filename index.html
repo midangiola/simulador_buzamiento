@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador de buzamiento en pozo vertical</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--tx:#1d2733;--mut:#5b6877;--bd:#d9e0e8;--ac:#c2410c;--ac2:#1d4ed8;--soft:#eef2f7;--well:#e8edf3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171d;--card:#1b232c;--tx:#e8edf3;--mut:#a3afbd;--bd:#2f3b48;--ac:#fb923c;--ac2:#7aa7ff;--soft:#242f3a;--well:#26313c}}
+:root[data-theme="dark"]{--bg:#12171d;--card:#1b232c;--tx:#e8edf3;--mut:#a3afbd;--bd:#2f3b48;--ac:#fb923c;--ac2:#7aa7ff;--soft:#242f3a;--well:#26313c}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.card h2{font-size:1rem;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+label{font-weight:600;display:block;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline}
+.val{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ac2)}
+input[type=range]{width:100%;accent-color:var(--ac2);margin:6px 0 16px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg button{font:inherit;background:var(--soft);color:var(--tx);border:1.5px solid var(--bd);border-radius:10px;padding:10px 6px;cursor:pointer;line-height:1.3}
+.seg button b{display:block}
+.seg button small{color:var(--mut)}
+.seg button[aria-pressed=true]{border-color:var(--ac2);box-shadow:inset 0 0 0 1px var(--ac2)}
+.res{text-align:center}
+.big{font-size:3.2rem;font-weight:800;color:var(--ac);line-height:1.1;font-variant-numeric:tabular-nums}
+.eq{background:var(--soft);border-radius:8px;padding:10px;margin-top:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;overflow-x:auto;white-space:nowrap}
+.cls{display:inline-block;margin-top:8px;padding:2px 12px;border-radius:99px;background:var(--soft);color:var(--mut);font-size:.9rem}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--tx);font-size:12px}
+svg .m{fill:var(--mut)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px;border-bottom:1px solid var(--bd);text-align:center}
+th{color:var(--mut);font-weight:600;font-size:.9rem}
+tr.on td{background:var(--soft);font-weight:700}
+.note{color:var(--mut);font-size:.9rem;margin:10px 0 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Buzamiento de un plano geológico en un pozo vertical</h1>
+<p class="sub">Un plano inclinado que corta un pozo vertical aparece en la pared del pozo, “desenrollada”, como una sinusoide. Su amplitud <b>h</b> y el calibre <b>D</b> determinan el buzamiento.</p>
+
+<div class="grid">
+  <section class="card">
+    <h2>Entradas</h2>
+    <div class="row"><label for="h">Amplitud de la sinusoide, h</label><span class="val" id="hv"></span></div>
+    <input type="range" id="h" min="0" max="5" step="0.01" value="1">
+    <label>Calibre del pozo, D</label>
+    <div class="seg" id="seg">
+      <button data-d="158.75" aria-pressed="true"><b>D1</b><small>6,25″ (158,75 mm)</small></button>
+      <button data-d="215.9" aria-pressed="false"><b>D2</b><small>8,5″ (215,90 mm)</small></button>
+      <button data-d="304.8" aria-pressed="false"><b>D3</b><small>12″ (304,80 mm)</small></button>
+    </div>
+  </section>
+
+  <section class="card res">
+    <h2>Resultado</h2>
+    <div>Ángulo de buzamiento</div>
+    <div class="big" id="out">0,0°</div>
+    <div class="cls" id="cls"></div>
+    <div class="eq" id="eq"></div>
+    <p class="note">Buz = arctan(h / D), con h y D en las mismas unidades (D se convierte de mm a m).</p>
+  </section>
+
+  <section class="card">
+    <h2>Corte vertical del pozo</h2>
+    <svg viewBox="0 0 320 300" role="img" aria-label="Plano que corta el pozo vertical">
+      <defs>
+        <clipPath id="cw"><rect x="100" y="20" width="120" height="260"/></clipPath>
+        <clipPath id="ca"><rect x="10" y="20" width="300" height="260"/></clipPath>
+      </defs>
+      <rect x="100" y="20" width="120" height="260" fill="var(--well)"/>
+      <line x1="100" y1="20" x2="100" y2="280" stroke="var(--mut)" stroke-width="2"/>
+      <line x1="220" y1="20" x2="220" y2="280" stroke="var(--mut)" stroke-width="2"/>
+      <g clip-path="url(#ca)"><line id="pl0" stroke="var(--mut)" stroke-width="2" stroke-dasharray="5 4"/></g>
+      <g clip-path="url(#cw)"><line id="pl1" stroke="var(--ac)" stroke-width="4"/></g>
+      <line x1="160" y1="150" x2="300" y2="150" stroke="var(--mut)" stroke-dasharray="2 4"/>
+      <path id="arc" fill="none" stroke="var(--ac2)" stroke-width="2"/>
+      <text id="alab" class="m" x="226" y="140">θ</text>
+      <g id="dimh"></g>
+      <line x1="100" y1="290" x2="220" y2="290" stroke="var(--mut)"/>
+      <text x="160" y="284" text-anchor="middle">D</text>
+      <text x="108" y="38" class="m">Pozo vertical</text>
+    </svg>
+    <p class="note">Dibujo esquemático: el ángulo es el real; h y D no están a escala.</p>
+  </section>
+
+  <section class="card">
+    <h2>Pared del pozo desenrollada</h2>
+    <svg viewBox="0 0 360 240" role="img" aria-label="Sinusoide en la pared desenrollada">
+      <rect x="20" y="20" width="320" height="190" fill="var(--well)" stroke="var(--bd)"/>
+      <line x1="20" y1="115" x2="340" y2="115" stroke="var(--mut)" stroke-dasharray="2 4"/>
+      <path id="sin" fill="none" stroke="var(--ac)" stroke-width="3"/>
+      <g class="m" font-size="11">
+        <text x="20" y="226" text-anchor="middle">N 0°</text><text x="100" y="226" text-anchor="middle">E 90°</text>
+        <text x="180" y="226" text-anchor="middle">S 180°</text><text x="260" y="226" text-anchor="middle">O 270°</text>
+        <text x="340" y="226" text-anchor="middle">N 360°</text>
+      </g>
+      <g id="dims"></g>
+    </svg>
+    <p class="note" id="sinnote">Ancho = circunferencia del pozo (πD). Altura de la sinusoide = h (pico a valle).</p>
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <h2>Comparación entre calibres (con el h actual)</h2>
+  <table>
+    <thead><tr><th>Calibre</th><th>D (pulg / mm)</th><th>h / D</th><th>Buzamiento</th></tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+  <p class="note">Con el mismo h, un pozo de mayor calibre da un buzamiento menor. Con h = 0 el plano es horizontal (0°); cuando h crece mucho respecto de D, el buzamiento tiende a 90°.</p>
+</section>
+</main>
+<script>
+(function(){
+var D=158.75,H=1;
+var $=function(i){return document.getElementById(i)};
+var f1=function(x){return x.toLocaleString("es-AR",{minimumFractionDigits:1,maximumFractionDigits:1})};
+var f2=function(x){return x.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})};
+var buz=function(h,d){return Math.atan(h/(d/1000))*180/Math.PI};
+var NS="http://www.w3.org/2000/svg";
+function cls(a){return a<1?"Plano horizontal":a<30?"Buzamiento suave":a<60?"Buzamiento moderado":a<89?"Buzamiento fuerte":"Plano casi vertical"}
+function upd(){
+  var a=buz(H,D),r=a*Math.PI/180,t=H/(D/1000);
+  $("hv").textContent=f2(H)+" m";
+  $("out").textContent=f1(a)+"°";
+  $("cls").textContent=cls(a);
+  $("eq").textContent="Buz = arctan("+f1(H)+" / "+f2(D/1000)+"…) = arctan("+f2(t).replace(/\B(?=(\d{3})+(?!\d))/g,".")+") = "+f1(a)+"°";
+  $("eq").textContent="Buz = arctan("+f2(H)+" m / "+(D/1000).toLocaleString("es-AR",{maximumFractionDigits:5})+" m) = "+f1(a)+"°";
+  // corte vertical
+  var s=Math.tan(r),yl=150+60*s,yr=150-60*s;
+  ["pl0","pl1"].forEach(function(id){var e=$(id);e.setAttribute("x1",100-60);e.setAttribute("y1",150+120*s);e.setAttribute("x2",220+60);e.setAttribute("y2",150-120*s)});
+  var ex=160+40*Math.cos(r),ey=150-40*Math.sin(r);
+  $("arc").setAttribute("d",a<0.05?"":"M200 150 A40 40 0 0 0 "+ex.toFixed(1)+" "+ey.toFixed(1));
+  $("alab").setAttribute("x",206);$("alab").setAttribute("y",a>50?140:144);
+  var g=$("dimh");g.innerHTML="";
+  if(a>0.5&&Math.abs(yl-yr)<=250){
+    var l=document.createElementNS(NS,"line");l.setAttribute("x1",245);l.setAttribute("x2",245);l.setAttribute("y1",yr);l.setAttribute("y2",yl);l.setAttribute("stroke","var(--ac2)");l.setAttribute("stroke-width","2");g.appendChild(l);
+    var tx=document.createElementNS(NS,"text");tx.setAttribute("x",252);tx.setAttribute("y",150+4);tx.textContent="h";g.appendChild(tx);
+    [yr,yl].forEach(function(y){var c=document.createElementNS(NS,"line");c.setAttribute("x1",220);c.setAttribute("x2",250);c.setAttribute("y1",y);c.setAttribute("y2",y);c.setAttribute("stroke","var(--ac2)");c.setAttribute("stroke-dasharray","3 3");g.appendChild(c)});
+  }else if(a>0.5){
+    var tx2=document.createElementNS(NS,"text");tx2.setAttribute("x",236);tx2.setAttribute("y",60);tx2.setAttribute("class","m");tx2.textContent="h (fuera de dibujo)";g.appendChild(tx2);
+  }
+  // sinusoide
+  var A=320*t/Math.PI,sat=A>180;if(sat)A=180;
+  var p="";for(var i=0;i<=80;i++){var x=20+i*4,y=115+(A/2)*Math.cos(2*Math.PI*i/80);p+=(i?"L":"M")+x+" "+y.toFixed(1)}
+  $("sin").setAttribute("d",p);
+  var d=$("dims");d.innerHTML="";
+  if(A>1){
+    var v=document.createElementNS(NS,"line");v.setAttribute("x1",20);v.setAttribute("x2",20);v.setAttribute("y1",115-A/2);v.setAttribute("y2",115+A/2);v.setAttribute("stroke","var(--ac2)");v.setAttribute("stroke-width","2");d.appendChild(v);
+    var q=document.createElementNS(NS,"text");q.setAttribute("x",26);q.setAttribute("y",115-A/2+(A/2<16?-4:14));q.textContent="h";d.appendChild(q);
+  }
+  $("sinnote").textContent="Ancho = circunferencia del pozo (πD). Altura de la sinusoide = h (pico a valle)."+(sat?" La amplitud dibujada está limitada al marco.":"");
+  // tabla
+  var rows="";[["D1",158.75,"6,25″"],["D2",215.9,"8,5″"],["D3",304.8,"12″"]].forEach(function(c){
+    rows+='<tr'+(c[1]===D?' class="on"':'')+'><td>'+c[0]+'</td><td>'+c[2]+' / '+c[1].toLocaleString("es-AR",{minimumFractionDigits:2})+' mm</td><td>'+(H/(c[1]/1000)).toLocaleString("es-AR",{maximumFractionDigits:1})+'</td><td>'+f1(buz(H,c[1]))+'°</td></tr>'});
+  $("tb").innerHTML=rows;
+}
+$("h").addEventListener("input",function(e){H=parseFloat(e.target.value);upd()});
+Array.prototype.forEach.call($("seg").children,function(b){b.addEventListener("click",function(){
+  D=parseFloat(b.dataset.d);Array.prototype.forEach.call($("seg").children,function(x){x.setAttribute("aria-pressed",x===b)});upd()})});
+upd();
+})();
+</script>
+</body>
+</html>
